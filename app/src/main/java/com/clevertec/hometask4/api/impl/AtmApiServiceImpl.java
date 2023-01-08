@@ -1,36 +1,45 @@
 package com.clevertec.hometask4.api.impl;
 
-import android.os.Build;
-import androidx.annotation.RequiresApi;
-import com.clevertec.hometask4.api.AtmApi;
+import android.widget.Toast;
+import com.clevertec.hometask4.MapsActivity;
 import com.clevertec.hometask4.api.AtmApiProvider;
 import com.clevertec.hometask4.api.AtmApiService;
 import com.clevertec.hometask4.dto.AtmDto;
 import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
-import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
+
+import static com.clevertec.hometask4.constants.Constants.UNKNOWN_PARSING_DATA_ERROR;
 
 public class AtmApiServiceImpl implements AtmApiService {
 
-    private Optional<AtmApi> atmApi;
+    private final MapsActivity mapsActivity;
+    private final AtmApiProvider atmApiProvider;
 
-    public AtmApiServiceImpl(AtmApiProvider atmApiProvider) {
-        atmApi = atmApiProvider.getRemoteApi();
+    public AtmApiServiceImpl(MapsActivity mapsActivity) {
+        this.mapsActivity = mapsActivity;
+        atmApiProvider = new AtmApiProviderImpl();
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.N)
-    @Override
-    public List<AtmDto> getAtms() {
-        if (atmApi.isPresent()) {
-            Call<List<AtmDto>> call = atmApi.get().getAtm();
-            try {
-                return call.execute().body();
-            } catch (IOException e) {
-                System.out.println(e.getMessage());
+    public void getAtms(String city) {
+        Call<List<AtmDto>> call = atmApiProvider.getAtmApi().getAtm(city);
+        call.enqueue(new Callback<List<AtmDto>>() {
+            @Override
+            public void onResponse(Call<List<AtmDto>> call, Response<List<AtmDto>> response) {
+                mapsActivity.addMarkers(
+                        response.isSuccessful()
+                                ? response.body()
+                                : Collections.emptyList()
+                );
             }
-        }
-        return null;
+
+            @Override
+            public void onFailure(Call<List<AtmDto>> call, Throwable t) {
+                Toast.makeText(mapsActivity, UNKNOWN_PARSING_DATA_ERROR, Toast.LENGTH_LONG).show();
+            }
+        });
     }
 }
